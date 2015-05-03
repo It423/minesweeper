@@ -186,7 +186,7 @@ namespace Minesweeper
         }
 
         /// <summary>
-        /// Handles a tile beign right clicked.
+        /// Handles a tile begin right clicked.
         /// </summary>
         /// <param name="sender"> The origin of the event. </param>
         /// <param name="e"> The event arguments. </param>
@@ -265,6 +265,12 @@ namespace Minesweeper
             ImageBrush brush = new ImageBrush();
             brush.ImageSource = new BitmapImage(new Uri(string.Format("Images/Uncovered{0}.png", this.GameGrid.Tiles[e.X][e.Y].Nearby), UriKind.Relative));
             this.TilesButtons[e.X][e.Y].Background = brush;
+
+            if (this.EveryTileFilledIn())
+            {
+                MessageBoxResult msg = MessageBox.Show(this, "You uncovered every square! You win!", "Victory!");
+                this.GameOver = true;
+            }
         }
 
         /// <summary>
@@ -274,15 +280,46 @@ namespace Minesweeper
         /// <param name="e"> The event arguments. </param>
         private void Mine_Uncovered(object sender, MineUncoveredEventArgs e)
         {
-            ImageBrush brush = new ImageBrush();
-            brush.ImageSource = new BitmapImage(new Uri("Images/Mine.png", UriKind.Relative));
-            this.TilesButtons[e.X][e.Y].Background = brush;
+            // Uncover all mines
+            for (int x = 0; x < this.GameGrid.Tiles.Length; x++)
+            {
+                for (int y = 0; y < this.GameGrid.Tiles[x].Length; y++)
+                {
+                    if (this.GameGrid.Tiles[x][y].Mine)
+                    {
+                        ImageBrush brush = new ImageBrush();
+                        brush.ImageSource = new BitmapImage(new Uri("Images/Mine.png", UriKind.Relative));
+                        this.TilesButtons[x][y].Background = brush;
+                    }
+                }
+            }
 
+            // Tell the user they lost
             if (!this.GameOver)
             {
                 MessageBoxResult msg = MessageBox.Show(this, "You hit a mine! Game over!", "Game Over");
                 this.GameOver = true;
             }
+        }
+
+        /// <summary>
+        /// Checks if every tile is clicked or flagged.
+        /// </summary>
+        /// <returns> Whether the game is complete. </returns>
+        private bool EveryTileFilledIn()
+        {
+            foreach (Tile[] column in this.GameGrid.Tiles)
+            {
+                foreach (Tile t in column)
+                {
+                    if (!t.Uncovered && !t.Flagged)
+                    {
+                        return false;
+                    }
+                }
+            }
+
+            return true;
         }
     }
 }
