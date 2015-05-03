@@ -3,6 +3,7 @@
 using System;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 
@@ -14,11 +15,21 @@ namespace Minesweeper
     public partial class MainWindow : Window
     {
         /// <summary>
+        /// The values used for each difficulty,
+        /// </summary>
+        public static readonly int[][] DifficultSettings = new int[3][] { 
+            new int[3] { 9, 9, 10 },
+            new int[3] { 16, 16, 40 },
+            new int[3] { 16, 30, 99 }
+        };
+
+        /// <summary>
         /// Initializes a new instance of the <see cref="MainWindow" /> class.
         /// </summary>
         public MainWindow()
         {
             this.InitializeComponent();
+            this.StartButton_Click(this, new RoutedEventArgs());
         }
 
         /// <summary>
@@ -34,8 +45,8 @@ namespace Minesweeper
         private void InitializeGrid(int rows, int columns)
         {
             // Set window size
-            this.Width = 16 * columns + 20;
-            this.Height = 16 * rows + 130;
+            this.Width = (16 * columns) + 20;
+            this.Height = (16 * rows) + 130;
 
             // Set the rows and columns on the display grid
             this.SetGridDefinitions(rows, columns);
@@ -62,6 +73,10 @@ namespace Minesweeper
         private void CreateTileButton(int x, int y)
         {
             this.Tiles[x][y] = new Button();
+
+            // Add event handlers
+            this.Tiles[x][y].MouseLeftButtonUp += this.Tile_MouseLeftButtonUp;
+            this.Tiles[x][y].MouseRightButtonDown += this.Tile_MouseRightButtonUp;
 
             // Set the image
             ImageBrush brush = new ImageBrush();
@@ -99,6 +114,41 @@ namespace Minesweeper
                 this.MineGrid.ColumnDefinitions.Add(new ColumnDefinition());
                 this.MineGrid.ColumnDefinitions[i].Width = new GridLength(1, GridUnitType.Star);
             }
+        }
+
+        /// <summary>
+        /// Handles the click of the start button.
+        /// </summary>
+        /// <param name="sender"> The origin of the event. </param>
+        /// <param name="e"> The event arguments. </param>
+        private void StartButton_Click(object sender, RoutedEventArgs e)
+        {
+            // Get difficulty settings
+            int xSize = MainWindow.DifficultSettings[(int)this.DifficultySlider.Value][0];
+            int ySize = MainWindow.DifficultSettings[(int)this.DifficultySlider.Value][1];
+            int mines = MainWindow.DifficultSettings[(int)this.DifficultySlider.Value][2];
+
+            this.InitializeGrid(xSize, ySize);
+        }
+
+        /// <summary>
+        /// Handles a tile being left clicked.
+        /// </summary>
+        /// <param name="sender"> The origin of the event. </param>
+        /// <param name="e"> The event arguments. </param>
+        private void Tile_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            throw new NotImplementedException();
+        }
+
+        /// <summary>
+        /// Handles a tile beign right clicked.
+        /// </summary>
+        /// <param name="sender"> The origin of the event. </param>
+        /// <param name="e"> The event arguments. </param>
+        private void Tile_MouseRightButtonUp(object sender, MouseButtonEventArgs e)
+        {
+            throw new NotImplementedException();
         }
     }
 }
