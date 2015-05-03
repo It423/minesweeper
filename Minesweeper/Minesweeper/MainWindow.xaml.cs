@@ -171,7 +171,7 @@ namespace Minesweeper
             // Generate grid if need be
             if (!this.TileClicked)
             {
-                this.GameGrid = new TileGrid(this.TilesButtons.Length, this.TilesButtons[0].Length, this.Mines, x, y);
+                this.GameGrid = new TileGrid(this.TilesButtons[0].Length, this.TilesButtons.Length, this.Mines, x, y);
                 this.MinesLeftText.Text = string.Format("Mines Left: {0}", this.Mines.ToString());
                 this.GameGrid.TileUncovered += this.Tile_Uncovered;
                 this.GameGrid.MineUncovered += this.Mine_Uncovered;
