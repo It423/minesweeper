@@ -1,11 +1,13 @@
 ﻿// MainWindow.xaml.cs
-// <copyright file="MainWindow.cs"> This code is protected under the MIT License. </copyright>
+// <copyright file="MainWindow.xaml.cs"> This code is protected under the MIT License. </copyright>
 using System;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using Minesweeper.Game;
+using Minesweeper.Game.Events;
 
 namespace Minesweeper
 {
@@ -33,9 +35,29 @@ namespace Minesweeper
         }
 
         /// <summary>
-        /// Gets or sets the tiles for minesweeper.
+        /// Gets or sets the TilesButtons for minesweeper.
         /// </summary>
-        public Button[][] Tiles { get; set; }
+        public Button[][] TilesButtons { get; set; }
+
+        /// <summary>
+        /// Gets or sets the grid of tiles.
+        /// </summary>
+        public TileGrid GameGrid { get; set; }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether the game is over.
+        /// </summary>
+        public bool GameOver { get; set; }
+
+        /// <summary>
+        /// Gets or sets a value indicating whether a tile has been clicked.
+        /// </summary>
+        public bool TileClicked { get; set; }
+
+        /// <summary>
+        /// Gets or sets how many mines there are.
+        /// </summary>
+        public int Mines { get; set; }
 
         /// <summary>
         /// Initializes a minesweeper grid.
@@ -52,10 +74,10 @@ namespace Minesweeper
             this.SetGridDefinitions(rows, columns);
 
             // Generate the grid
-            this.Tiles = new Button[columns][];
+            this.TilesButtons = new Button[columns][];
             for (int x = 0; x < columns; x++)
             {
-                this.Tiles[x] = new Button[rows];
+                this.TilesButtons[x] = new Button[rows];
                 for (int y = 0; y < rows; y++)
                 {
                     this.CreateTileButton(x, y);
@@ -72,25 +94,25 @@ namespace Minesweeper
         /// <param name="y"> The y position of the tile. </param>
         private void CreateTileButton(int x, int y)
         {
-            this.Tiles[x][y] = new Button();
+            this.TilesButtons[x][y] = new Button();
 
             // Add event handlers
-            this.Tiles[x][y].MouseLeftButtonUp += this.Tile_MouseLeftButtonUp;
-            this.Tiles[x][y].MouseRightButtonDown += this.Tile_MouseRightButtonUp;
+            this.TilesButtons[x][y].PreviewMouseLeftButtonUp += this.Tile_MouseLeftButtonUp;
+            this.TilesButtons[x][y].PreviewMouseRightButtonUp += this.Tile_MouseRightButtonUp;
 
             // Set the image
             ImageBrush brush = new ImageBrush();
             brush.ImageSource = new BitmapImage(new Uri("Images/Covered.png", UriKind.Relative));
-            this.Tiles[x][y].Background = brush;
+            this.TilesButtons[x][y].Background = brush;
 
             // Set the size
-            this.Tiles[x][y].Width = 16;
-            this.Tiles[x][y].Height = 16;
+            this.TilesButtons[x][y].Width = 16;
+            this.TilesButtons[x][y].Height = 16;
 
             // Set the grid position and add to grid
-            Grid.SetColumn(this.Tiles[x][y], x);
-            Grid.SetRow(this.Tiles[x][y], y);
-            this.MineGrid.Children.Add(this.Tiles[x][y]);
+            Grid.SetColumn(this.TilesButtons[x][y], x);
+            Grid.SetRow(this.TilesButtons[x][y], y);
+            this.MineGrid.Children.Add(this.TilesButtons[x][y]);
         }
 
         /// <summary>
@@ -126,9 +148,12 @@ namespace Minesweeper
             // Get difficulty settings
             int xSize = MainWindow.DifficultSettings[(int)this.DifficultySlider.Value][0];
             int ySize = MainWindow.DifficultSettings[(int)this.DifficultySlider.Value][1];
-            int mines = MainWindow.DifficultSettings[(int)this.DifficultySlider.Value][2];
+            this.Mines = MainWindow.DifficultSettings[(int)this.DifficultySlider.Value][2];
 
             this.InitializeGrid(xSize, ySize);
+
+            this.GameOver = false;
+            this.TileClicked = false;
         }
 
         /// <summary>
@@ -138,7 +163,26 @@ namespace Minesweeper
         /// <param name="e"> The event arguments. </param>
         private void Tile_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
         {
-            throw new NotImplementedException();
+            // Get the tile
+            int x;
+            int y;
+            this.GetXYFromTile(sender, out x, out y);
+
+            // Generate grid if need be
+            if (!this.TileClicked)
+            {
+                this.GameGrid = new TileGrid(this.TilesButtons.Length, this.TilesButtons[0].Length, this.Mines, x, y);
+                this.MinesLeftText.Text = string.Format("Mines Left: {0}", this.Mines.ToString());
+                this.GameGrid.TileUncovered += this.Tile_Uncovered;
+                this.GameGrid.MineUncovered += this.Mine_Uncovered;
+                this.TileClicked = true;
+            }
+
+            if (!this.GameGrid.Tiles[x][y].Uncovered && !this.GameOver)
+            {
+                // Uncover the squares
+                this.GameGrid.UncoverSquares(x, y);
+            }
         }
 
         /// <summary>
@@ -148,7 +192,97 @@ namespace Minesweeper
         /// <param name="e"> The event arguments. </param>
         private void Tile_MouseRightButtonUp(object sender, MouseButtonEventArgs e)
         {
-            throw new NotImplementedException();
+            // Get the tile
+            int x;
+            int y;
+            this.GetXYFromTile(sender, out x, out y);
+
+            if (!this.GameOver && this.TileClicked && !this.GameGrid.Tiles[x][y].Uncovered)
+            {
+                // Change the mines
+                if (this.GameGrid.Tiles[x][y].Flagged)
+                {
+                    this.Mines++;
+                }
+                else
+                {
+                    this.Mines--;
+                    
+                    // Stop the player using all the flags
+                    if (this.Mines < 0)
+                    {
+                        this.Mines++;
+                        return;
+                    }
+                }
+
+                this.MinesLeftText.Text = string.Format("Mines Left: {0}", this.Mines.ToString());
+
+                // Get the correct image
+                string image = this.GameGrid.Tiles[x][y].Flagged ? "Images/Covered.png" : "Images/Flag.png";
+
+                // Set the image correctly
+                ImageBrush brush = new ImageBrush();
+                brush.ImageSource = new BitmapImage(new Uri(image, UriKind.Relative));
+                this.TilesButtons[x][y].Background = brush;
+
+                this.GameGrid.Tiles[x][y].Flagged = !this.GameGrid.Tiles[x][y].Flagged;
+            }
+        }
+
+        /// <summary>
+        /// Gets the x and y positions from a tile.
+        /// </summary>
+        /// <param name="tile"> The tile. </param>
+        /// <param name="x"> The x position of the tile. </param>
+        /// <param name="y"> The y position of the tile. </param>
+        private void GetXYFromTile(object tile, out int x, out int y)
+        {
+            for (int xCheck = 0; xCheck < this.TilesButtons.Length; xCheck++)
+            {
+                for (int yCheck = 0; yCheck < this.TilesButtons[xCheck].Length; yCheck++)
+                {
+                    if (this.TilesButtons[xCheck][yCheck].Equals(tile))
+                    {
+                        x = xCheck;
+                        y = yCheck;
+                        return;
+                    }
+                }
+            }
+
+            x = 0;
+            y = 0;
+        }
+
+        /// <summary>
+        /// Handles a tile being uncovered.
+        /// </summary>
+        /// <param name="sender"> The origin of the event. </param>
+        /// <param name="e"> The event arguments. </param>
+        private void Tile_Uncovered(object sender, TileUncoveredEventArgs e)
+        {
+            ImageBrush brush = new ImageBrush();
+            brush.ImageSource = new BitmapImage(new Uri(string.Format("Images/Uncovered{0}.png", this.GameGrid.Tiles[e.X][e.Y].Nearby), UriKind.Relative));
+            this.TilesButtons[e.X][e.Y].Background = brush;
+        }
+
+        /// <summary>
+        /// Handles a tile being uncovered.
+        /// </summary>
+        /// <param name="sender"> The origin of the event. </param>
+        /// <param name="e"> The event arguments. </param>
+        private void Mine_Uncovered(object sender, MineUncoveredEventArgs e)
+        {
+            ImageBrush brush = new ImageBrush();
+            brush.ImageSource = new BitmapImage(new Uri("Images/Mine.png", UriKind.Relative));
+            this.TilesButtons[e.X][e.Y].Background = brush;
+
+            if (!this.GameOver)
+            {
+                MessageBoxResult msg = MessageBox.Show(this, "You hit a mine! Game over!", "Game Over");
+                this.GameOver = true;
+            }
         }
     }
 }
