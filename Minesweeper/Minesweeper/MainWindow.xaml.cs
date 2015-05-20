@@ -197,7 +197,7 @@ namespace Minesweeper
             int y;
             this.GetXYFromTile(sender, out x, out y);
 
-            if (!this.GameOver && this.TileClicked && !this.GameGrid.Tiles[x][y].Uncovered)
+            if (!this.GameOver && this.TileClicked && (!this.GameGrid.Tiles[x][y].Uncovered || this.GameGrid.Tiles[x][y].Flagged))
             {
                 // Change the mines
                 if (this.GameGrid.Tiles[x][y].Flagged)
@@ -262,6 +262,12 @@ namespace Minesweeper
         /// <param name="e"> The event arguments. </param>
         private void Tile_Uncovered(object sender, TileUncoveredEventArgs e)
         {
+            // Correct flag count if tile is flagged and clicked
+            if (this.GameGrid.Tiles[e.X][e.Y].Flagged)
+            {
+                this.Tile_MouseRightButtonUp(this.TilesButtons[e.X][e.Y], null);
+            }
+
             ImageBrush brush = new ImageBrush();
             brush.ImageSource = new BitmapImage(new Uri(string.Format("Images/Uncovered{0}.png", this.GameGrid.Tiles[e.X][e.Y].Nearby), UriKind.Relative));
             this.TilesButtons[e.X][e.Y].Background = brush;
